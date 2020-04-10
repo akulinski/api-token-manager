@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"github.com/dgrijalva/jwt-go"
@@ -15,26 +15,32 @@ type Claims struct {
 }
 
 func GenerateToken(username string) string {
-	// Declare the expiration time of the token
-	// here, we have kept it as 5 minutes
+
 	expirationTime := time.Now().Add(5 * time.Minute)
-	// Create the JWT claims, which includes the username and expiry time
 	claims := &Claims{
 		Username: username,
 		StandardClaims: jwt.StandardClaims{
-			// In JWT, the expiry time is expressed as unix milliseconds
 			ExpiresAt: expirationTime.Unix(),
 		},
 	}
 
-	// Declare the token with the algorithm used for signing, and the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
-	// Create the JWT string
 	tokenString, err := token.SignedString([]byte(jwtKey))
 
-	if err!=nil{
+	if err != nil {
 		log.Printf("Failed to generate jwt token %s", err)
 	}
 
 	return tokenString
+}
+
+func ValidateJwt(model TokenModel) (*jwt.Token, error) {
+
+	claims := Claims{}
+
+	tkn, err := jwt.ParseWithClaims(model.Token, &claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtKey), nil
+	})
+
+	return tkn, err
 }

@@ -1,7 +1,8 @@
-package main
+package db
 
 import (
 	"context"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -10,6 +11,9 @@ import (
 	"os"
 	"time"
 )
+
+var _ = godotenv.Load()
+
 
 type Token struct {
 	Id       string    `json:"id" bson:"_id,omitempty"`
@@ -71,7 +75,7 @@ func GetById(id primitive.ObjectID) Token {
 
 	var result Token
 
-	err = getCollection().FindOne(context.Background(), filter).Decode(&result)
+	err := getCollection().FindOne(context.Background(), filter).Decode(&result)
 
 	if err != nil {
 		log.Println(err)
@@ -87,10 +91,6 @@ func RevokeToken(id primitive.ObjectID) int64 {
 	byId := GetById(id)
 
 	byId.Revoked = true
-
-	if err != nil {
-		log.Println(err)
-	}
 
 	result, err := getCollection().UpdateOne(context.Background(), filter, bson.D{
 		{

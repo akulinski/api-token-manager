@@ -1,40 +1,81 @@
-package main
+package api
 
 import (
 	"encoding/json"
+	"github.com/akulinski/api-token-manager/db"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"net/http"
 	"time"
 )
 
-type TokenResponse struct {
-	Token       string    `json:"value"`
+var _ = godotenv.Load()
+
+type TokenModel struct {
+	Token       string    `json:"token"`
 	GeneratedAt time.Time `json:"generatedAt"`
 }
 
 func AddToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var token Token
+	var token db.Token
 
-	err = json.NewDecoder(r.Body).Decode(&token)
+	err := json.NewDecoder(r.Body).Decode(&token)
 
 	if err != nil {
+		log.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	result := Insert(token)
+	result := db.Insert(token)
 
-	json.NewEncoder(w).Encode(&result)
+	err = json.NewEncoder(w).Encode(&result)
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 }
 
+func ValidateToken(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var tokenModel TokenModel
+
+	err := json.NewDecoder(r.Body).Decode(&tokenModel)
+	if err != nil {
+		log.Println(err)
+	}
+	tokenStr, err := ValidateJwt(tokenModel)
+
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+
+	if !tokenStr.Valid {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
 func GetAllTokens(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(GetAll())
+	json.NewEncoder(w).Encode(db.GetAll())
 }
 
 func GetTokenById(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +84,7 @@ func GetTokenById(w http.ResponseWriter, r *http.Request) {
 
 	id := getIdFromRequest(r)
 
-	byId := GetById(id)
+	byId := db.GetById(id)
 
 	json.NewEncoder(w).Encode(&byId)
 }
@@ -53,7 +94,7 @@ func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 
 	id := getIdFromRequest(r)
 
-	revoked := RevokeToken(id)
+	revoked := db.RevokeToken(id)
 
 	json.NewEncoder(w).Encode(&revoked)
 
@@ -64,7 +105,7 @@ func GenerateTokenForUser(w http.ResponseWriter, r *http.Request) {
 	username := getParamFromRequest(r, "username")
 	tokenString := GenerateToken(username)
 
-	tokenResponse := TokenResponse{Token:tokenString, GeneratedAt:time.Now()}
+	tokenResponse := TokenModel{Token: tokenString, GeneratedAt: time.Now()}
 
 	json.NewEncoder(w).Encode(&tokenResponse)
 
