@@ -6,7 +6,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"net/http"
+	"time"
 )
+
+type TokenResponse struct {
+	Token       string    `json:"value"`
+	GeneratedAt time.Time `json:"generatedAt"`
+}
 
 func AddToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -53,12 +59,30 @@ func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func GenerateTokenForUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	username := getParamFromRequest(r, "username")
+	tokenString := GenerateToken(username)
+
+	tokenResponse := TokenResponse{Token:tokenString, GeneratedAt:time.Now()}
+
+	json.NewEncoder(w).Encode(&tokenResponse)
+
+}
+
 func getIdFromRequest(r *http.Request) primitive.ObjectID {
 	id, err := primitive.ObjectIDFromHex(mux.Vars(r)["id"])
 
 	if err != nil {
 		log.Println(err)
 	}
+
+	return id
+}
+
+func getParamFromRequest(r *http.Request, param string) string {
+
+	id := mux.Vars(r)[param]
 
 	return id
 }

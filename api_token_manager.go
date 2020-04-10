@@ -26,6 +26,7 @@ func main() {
 	r.HandleFunc("/api/v1/token", GetAllTokens).Methods("GET")
 	r.HandleFunc("/api/v1/token/{id}", GetTokenById).Methods("GET")
 	r.HandleFunc("/api/v1/token/{id}/revoke", RevokeTokenApi).Methods("PATCH")
+	r.HandleFunc("/api/v1/token/generate/{username}", GenerateTokenForUser).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
 
