@@ -9,13 +9,9 @@ import (
 	"os"
 )
 
+var err = godotenv.Load()
+
 func main() {
-
-	err := godotenv.Load()
-
-	if err != nil {
-		log.Fatalln("Failed to load .env file")
-	}
 
 	port := os.Getenv("PORT")
 
@@ -24,23 +20,13 @@ func main() {
 		log.Printf("Defaulting to port %s", port)
 	}
 
-	GetClient()
-
 	r := mux.NewRouter()
 
-	r.HandleFunc("/", HomeHandler)
+	r.HandleFunc("/api/v1/token", AddToken).Methods("POST")
+	r.HandleFunc("/api/v1/token", GetAllTokens).Methods("GET")
+	r.HandleFunc("/api/v1/token/{id}", GetTokenById).Methods("GET")
+	r.HandleFunc("/api/v1/token/{id}/revoke", RevokeTokenApi).Methods("PATCH")
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
 
-}
-
-func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	_, err := fmt.Fprint(w, "Hello, World!")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
 }
