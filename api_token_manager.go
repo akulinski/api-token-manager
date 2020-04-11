@@ -24,12 +24,18 @@ func main() {
 
 	r := mux.NewRouter()
 
+	setUpV1Routes(r)
+
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
+}
+
+func setUpV1Routes(r *mux.Router) {
 	r.HandleFunc("/api/v1/token", api.AddToken).Methods("POST")
 	r.HandleFunc("/api/v1/token", api.GetAllTokens).Methods("GET")
-	r.HandleFunc("/api/v1/token/{id}", api.GetTokenById).Methods("GET")
+	r.HandleFunc("/api/v1/token/find/{id}", api.GetTokenById).Methods("GET")
+	r.HandleFunc("/api/v1/token/find", api.GetTokenByModel).Methods("POST")
+
 	r.HandleFunc("/api/v1/token/{id}/revoke", api.RevokeTokenApi).Methods("PATCH")
 	r.HandleFunc("/api/v1/token/generate/{username}", api.GenerateTokenForUser).Methods("POST")
 	r.HandleFunc("/api/v1/token/validate", api.ValidateToken).Methods("POST")
-
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
 }

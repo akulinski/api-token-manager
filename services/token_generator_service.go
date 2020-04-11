@@ -1,6 +1,7 @@
-package api
+package services
 
 import (
+	"github.com/akulinski/api-token-manager/domain"
 	"github.com/dgrijalva/jwt-go"
 	"log"
 	"os"
@@ -34,7 +35,7 @@ func GenerateToken(username string) string {
 	return tokenString
 }
 
-func ValidateJwt(model TokenModel) (*jwt.Token, error) {
+func ValidateJwt(model domain.TokenModel) (*jwt.Token, error) {
 
 	claims := Claims{}
 

@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"github.com/akulinski/api-token-manager/db"
+	"github.com/akulinski/api-token-manager/domain"
+	"github.com/akulinski/api-token-manager/services"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -14,15 +16,12 @@ import (
 
 var _ = godotenv.Load()
 
-type TokenModel struct {
-	Token       string    `json:"token"`
-	GeneratedAt time.Time `json:"generatedAt"`
-}
+var tokenRepository = db.NewTokenRepository()
 
 func AddToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var token db.Token
+	var token domain.Token
 
 	err := json.NewDecoder(r.Body).Decode(&token)
 
@@ -32,7 +31,7 @@ func AddToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := db.Insert(token)
+	result := tokenRepository.Insert(token)
 
 	err = json.NewEncoder(w).Encode(&result)
 
@@ -47,13 +46,18 @@ func AddToken(w http.ResponseWriter, r *http.Request) {
 func ValidateToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	var tokenModel TokenModel
+	tokenModel := getModelFromRequest(r)
 
-	err := json.NewDecoder(r.Body).Decode(&tokenModel)
-	if err != nil {
-		log.Println(err)
+	token := tokenRepository.FindByTokenValue(tokenModel.Token)
+
+	if token.Revoked == true {
+
+		w.WriteHeader(http.StatusUnauthorized)
+
+		return
 	}
-	tokenStr, err := ValidateJwt(tokenModel)
+
+	tokenStr, err := services.ValidateJwt(tokenModel)
 
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
@@ -75,7 +79,7 @@ func ValidateToken(w http.ResponseWriter, r *http.Request) {
 func GetAllTokens(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(db.GetAll())
+	json.NewEncoder(w).Encode(tokenRepository.GetAll())
 }
 
 func GetTokenById(w http.ResponseWriter, r *http.Request) {
@@ -84,9 +88,20 @@ func GetTokenById(w http.ResponseWriter, r *http.Request) {
 
 	id := getIdFromRequest(r)
 
-	byId := db.GetById(id)
+	byId := tokenRepository.GetById(id)
 
 	json.NewEncoder(w).Encode(&byId)
+}
+
+func GetTokenByModel(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	tokenModel := getModelFromRequest(r)
+
+	token := tokenRepository.FindByTokenValue(tokenModel.Token)
+
+	json.NewEncoder(w).Encode(&token)
 }
 
 func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +109,7 @@ func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 
 	id := getIdFromRequest(r)
 
-	revoked := db.RevokeToken(id)
+	revoked := tokenRepository.RevokeToken(id)
 
 	json.NewEncoder(w).Encode(&revoked)
 
@@ -103,12 +118,22 @@ func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 func GenerateTokenForUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	username := getParamFromRequest(r, "username")
-	tokenString := GenerateToken(username)
+	tokenString := services.GenerateToken(username)
 
-	tokenResponse := TokenModel{Token: tokenString, GeneratedAt: time.Now()}
+	tokenResponse := domain.TokenModel{Token: tokenString, GeneratedAt: time.Now()}
+
+	token := domain.Token{
+		IssuedAt: time.Now(),
+		Issuer:   "SYSTEM",
+		UserID:   username,
+		Token:    tokenString,
+		Expired:  false,
+		Revoked:  false,
+	}
+
+	tokenRepository.Insert(token)
 
 	json.NewEncoder(w).Encode(&tokenResponse)
-
 }
 
 func getIdFromRequest(r *http.Request) primitive.ObjectID {
@@ -126,4 +151,15 @@ func getParamFromRequest(r *http.Request, param string) string {
 	id := mux.Vars(r)[param]
 
 	return id
+}
+
+func getModelFromRequest(r *http.Request) domain.TokenModel {
+	var tokenModel domain.TokenModel
+
+	err := json.NewDecoder(r.Body).Decode(&tokenModel)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return tokenModel
 }
