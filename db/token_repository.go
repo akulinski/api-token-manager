@@ -33,7 +33,6 @@ type TokenRepository interface {
 	FindById(id primitive.ObjectID) domain.Token
 	GetAll() []*domain.Token
 	Insert(token domain.Token) *mongo.InsertOneResult
-	GetById(id primitive.ObjectID) domain.Token
 	RevokeToken(id primitive.ObjectID) int64
 	FindByTokenValue(tokenValue string) domain.Token
 }
@@ -42,9 +41,9 @@ type tokenRepository struct {
 	client *mongo.Client
 }
 
-func NewTokenRepository() tokenRepository {
+func NewTokenRepository() *tokenRepository {
 	client := getClient()
-	return tokenRepository{client: client}
+	return &tokenRepository{client: client}
 }
 
 func (r tokenRepository) RevokeToken(id primitive.ObjectID) int64 {

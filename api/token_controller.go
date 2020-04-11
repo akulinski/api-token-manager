@@ -107,12 +107,26 @@ func GetTokenByModel(w http.ResponseWriter, r *http.Request) {
 func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	id := getIdFromRequest(r)
+	tokenModel := getModelFromRequest(r)
+
+	token := tokenRepository.FindByTokenValue(tokenModel.Token)
+
+	if token.Id == "" {
+		log.Println("Failed to find token by value")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	id, err := primitive.ObjectIDFromHex(token.Id)
+
+	if err != nil {
+		log.Println("Failed to convert id")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	revoked := tokenRepository.RevokeToken(id)
 
 	json.NewEncoder(w).Encode(&revoked)
-
 }
 
 func GenerateTokenForUser(w http.ResponseWriter, r *http.Request) {
