@@ -17,4 +17,6 @@ type TokenModel struct {
 	GeneratedAt time.Time `json:"generatedAt"`
 }
 
-
+type UserModel struct{
+	UserIdentificator string `json:"UserIdentificator"`
+}

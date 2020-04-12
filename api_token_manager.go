@@ -35,6 +35,6 @@ func setUpV1Routes(r *mux.Router) {
 	r.HandleFunc("/api/v1/token/find/{id}", api.GetTokenById).Methods("GET")
 
 	r.HandleFunc("/api/v1/token/revoke", api.RevokeTokenApi).Methods("PATCH")
-	r.HandleFunc("/api/v1/token/generate/{username}", api.GenerateTokenForUser).Methods("POST")
+	r.HandleFunc("/api/v1/token/generate", api.GenerateTokenForUser).Methods("POST")
 	r.HandleFunc("/api/v1/token/validate", api.ValidateToken).Methods("POST")
 }

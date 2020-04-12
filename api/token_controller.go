@@ -46,7 +46,7 @@ func AddToken(w http.ResponseWriter, r *http.Request) {
 func ValidateToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	tokenModel := getModelFromRequest(r)
+	tokenModel := getTokenModelFromRequest(r)
 
 	token := tokenRepository.FindByTokenValue(tokenModel.Token)
 
@@ -97,7 +97,7 @@ func GetTokenByModel(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	tokenModel := getModelFromRequest(r)
+	tokenModel := getTokenModelFromRequest(r)
 
 	token := tokenRepository.FindByTokenValue(tokenModel.Token)
 
@@ -107,7 +107,7 @@ func GetTokenByModel(w http.ResponseWriter, r *http.Request) {
 func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	tokenModel := getModelFromRequest(r)
+	tokenModel := getTokenModelFromRequest(r)
 
 	token := tokenRepository.FindByTokenValue(tokenModel.Token)
 
@@ -131,15 +131,22 @@ func RevokeTokenApi(w http.ResponseWriter, r *http.Request) {
 
 func GenerateTokenForUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	username := getParamFromRequest(r, "username")
-	tokenString := services.GenerateToken(username)
+
+	var userModel domain.UserModel
+
+	err := json.NewDecoder(r.Body).Decode(&userModel)
+	if err != nil {
+		log.Println(err)
+	}
+
+	tokenString := services.GenerateToken(userModel.UserIdentificator)
 
 	tokenResponse := domain.TokenModel{Token: tokenString, GeneratedAt: time.Now()}
 
 	token := domain.Token{
 		IssuedAt: time.Now(),
 		Issuer:   "SYSTEM",
-		UserID:   username,
+		UserID:   userModel.UserIdentificator,
 		Token:    tokenString,
 		Expired:  false,
 		Revoked:  false,
@@ -160,14 +167,7 @@ func getIdFromRequest(r *http.Request) primitive.ObjectID {
 	return id
 }
 
-func getParamFromRequest(r *http.Request, param string) string {
-
-	id := mux.Vars(r)[param]
-
-	return id
-}
-
-func getModelFromRequest(r *http.Request) domain.TokenModel {
+func getTokenModelFromRequest(r *http.Request) domain.TokenModel {
 	var tokenModel domain.TokenModel
 
 	err := json.NewDecoder(r.Body).Decode(&tokenModel)
